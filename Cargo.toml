@@ -47,7 +47,7 @@ maintenance = { status = "passively-maintained" }
 [dependencies]
 bitflags = "1.3.2"
 magic-sys = { version = "0.3.0-alpha.3", path="../rust-magic-sys" }
-thiserror = "1.0.30"
+thiserror.workspace = true
 errno = "0.2.8"
 
 [dependencies.libc]
