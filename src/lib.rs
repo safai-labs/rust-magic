@@ -1,7 +1,7 @@
 //! # About
 //!
-//! This crate provides bindings for the `libmagic` C library, which recognizes the
-//! type of data contained in a file (or buffer).
+//! This crate provides bindings for the `libmagic` C library, which recognizes
+//! the type of data contained in a file (or buffer).
 //!
 //! You might be familiar with `libmagic`'s CLI; [`file`](https://www.darwinsys.com/file/):
 //!
@@ -12,19 +12,26 @@
 //!
 //! ## `libmagic`
 //!
-//! Understanding how the `libmagic` C library and thus this crate works requires a bit of glossary.
+//! Understanding how the `libmagic` C library and thus this crate works
+//! requires a bit of glossary.
 //!
-//! `libmagic` at its core can analyze a file or buffer and return a mostly unstructured text that describes the analysis result.
-//! There are built-in tests for special cases and there are magic databases with signatures which can be supplied by the user for the generic cases.
+//! `libmagic` at its core can analyze a file or buffer and return a mostly
+//! unstructured text that describes the analysis result. There are built-in
+//! tests for special cases and there are magic databases with signatures which
+//! can be supplied by the user for the generic cases.
 //!
 //! The analysis behaviour can be influenced by so-called flags and parameters.
-//! Flags are either set or unset and do not have a value, parameters have a value.
+//! Flags are either set or unset and do not have a value, parameters have a
+//! value.
 //!
-//! Databases can be in text form or compiled binary form for faster access. They can be loaded from files on disk or from in-memory buffers.
-//! A regular `libmagic` / `file` installation contains a default database file that includes a plethora of file formats.
+//! Databases can be in text form or compiled binary form for faster access.
+//! They can be loaded from files on disk or from in-memory buffers.
+//! A regular `libmagic` / `file` installation contains a default database file
+//! that includes a plethora of file formats.
 //!
-//! Most `libmagic` functionality requires a configured instance which is called a "magic cookie".
-//! Creating a cookie instance requires initial flags and usually loaded databases.
+//! Most `libmagic` functionality requires a configured instance which is called
+//! a "magic cookie". Creating a cookie instance requires initial flags and
+//! usually loaded databases.
 //!
 //! # Usage example
 //!
@@ -47,22 +54,24 @@
 //! # Further reading
 //!
 //! * [`Cookie::open`]
-//! * [`CookieFlags`], in particular [`CookieFlags::ERROR`], [`CookieFlags::NO_CHECK_BUILTIN`]
+//! * [`CookieFlags`], in particular [`CookieFlags::ERROR`],
+//!   [`CookieFlags::NO_CHECK_BUILTIN`]
 //! * [`Cookie::load`], [`Cookie::load_buffers`]
 //! * [`Cookie::file`], [`Cookie::buffer`]
 //!
 //! # Safety
 //!
-//! This crate is a binding to the `libmagic` C library and as such subject to its security problems.
-//! Please note that `libmagic` has several CVEs, listed on e.g. [Repology](https://repology.org/project/file/cves).
+//! This crate is a binding to the `libmagic` C library and as such subject to
+//! its security problems. Please note that `libmagic` has several CVEs, listed on e.g. [Repology](https://repology.org/project/file/cves).
 //! Make sure that you are using an up-to-date version of `libmagic` and ideally
-//! add additional security layers such as sandboxing (which this crate does _not_ provide)
-//! and __do not use it on untrusted input__ e.g. from users on the internet!
+//! add additional security layers such as sandboxing (which this crate does
+//! _not_ provide) and __do not use it on untrusted input__ e.g. from users on
+//! the internet!
 //!
-//! The Rust code of this crate needs to use some `unsafe` for interacting with the `libmagic` C FFI.
+//! The Rust code of this crate needs to use some `unsafe` for interacting with
+//! the `libmagic` C FFI.
 //!
 //! This crate has not been audited nor is it ready for production use.
-//!
 
 extern crate libc;
 extern crate magic_sys as ffi;
@@ -240,7 +249,8 @@ pub fn version() -> &'static str {
 fn db_filenames<P: AsRef<Path>>(filenames: &[P]) -> Result<Option<CString>, MagicError> {
     match filenames.len() {
         0 => Ok(None),
-        // this is not the most efficient nor correct for Windows, but consistent with previous behaviour
+        // this is not the most efficient nor correct for Windows, but consistent with previous
+        // behaviour
         _ => Ok(Some(
             CString::new(
                 filenames
@@ -388,7 +398,8 @@ impl Cookie {
     }
 
     // TODO: check, compile, list and load mostly do the same, refactor!
-    // TODO: ^ also needs to implement multiple databases, possibly waiting for the Path reform
+    // TODO: ^ also needs to implement multiple databases, possibly waiting for the
+    // Path reform
 
     /// Check the validity of entries in the database `filenames`
     #[doc(alias = "magic_check")]
@@ -412,7 +423,8 @@ impl Cookie {
 
     /// Compiles the given database `filenames` for faster access
     ///
-    /// The compiled files created are named from the `basename` of each file argument with '.mgc' appended to it.
+    /// The compiled files created are named from the `basename` of each file
+    /// argument with '.mgc' appended to it.
     #[doc(alias = "magic_compile")]
     pub fn compile<P: AsRef<Path>>(&self, filenames: &[P]) -> Result<(), MagicError> {
         let cookie = self.cookie;
@@ -432,7 +444,8 @@ impl Cookie {
         }
     }
 
-    /// Dumps all magic entries in the given database `filenames` in a human readable format
+    /// Dumps all magic entries in the given database `filenames` in a human
+    /// readable format
     #[doc(alias = "magic_list")]
     pub fn list<P: AsRef<Path>>(&self, filenames: &[P]) -> Result<(), MagicError> {
         let cookie = self.cookie;
@@ -456,7 +469,8 @@ impl Cookie {
     ///
     /// Adds ".mgc" to the database filenames as appropriate.
     ///
-    /// Calling `Cookie::load` or [`Cookie::load_buffers`] replaces the previously loaded database/s.
+    /// Calling `Cookie::load` or [`Cookie::load_buffers`] replaces the
+    /// previously loaded database/s.
     ///
     /// # Examples
     /// ```rust
@@ -497,7 +511,8 @@ impl Cookie {
     /// not have direct access to the filesystem, but can access the magic
     /// database via shared memory or other IPC means.
     ///
-    /// Calling `Cookie::load_buffers` or [`Cookie::load`] replaces the previously loaded database/s.
+    /// Calling `Cookie::load_buffers` or [`Cookie::load`] replaces the
+    /// previously loaded database/s.
     #[doc(alias = "magic_load_buffers")]
     pub fn load_buffers(&self, buffers: &[&[u8]]) -> Result<(), MagicError> {
         let cookie = self.cookie;
@@ -527,7 +542,8 @@ impl Cookie {
         }
     }
 
-    /// Creates a new configuration, `flags` specify how other functions should behave
+    /// Creates a new configuration, `flags` specify how other functions should
+    /// behave
     ///
     /// This does not `load()` any databases yet.
     #[doc(alias = "magic_open")]
@@ -586,9 +602,11 @@ mod tests {
     #[test]
     fn buffer() {
         let cookie = Cookie::open(Default::default()).ok().unwrap();
-        assert!(cookie
-            .load(&vec!["data/tests/db-python"].as_slice())
-            .is_ok());
+        assert!(
+            cookie
+                .load(&vec!["data/tests/db-python"].as_slice())
+                .is_ok()
+        );
 
         let s = b"#!/usr/bin/env python\nprint('Hello, world!')";
         assert_eq!(
@@ -627,9 +645,11 @@ mod tests {
     #[test]
     fn load_multiple() {
         let cookie = Cookie::open(CookieFlags::ERROR).ok().unwrap();
-        assert!(cookie
-            .load(&vec!["data/tests/db-images-png", "data/tests/db-python",])
-            .is_ok());
+        assert!(
+            cookie
+                .load(&vec!["data/tests/db-images-png", "data/tests/db-python",])
+                .is_ok()
+        );
     }
 
     #[test]
