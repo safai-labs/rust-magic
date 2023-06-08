@@ -88,6 +88,7 @@ use std::ffi::{CStr, CString};
 use std::path::Path;
 use std::ptr;
 use std::str;
+use std::sync::{RwLock, Arc};
 use thiserror::Error;
 
 bitflags! {
@@ -297,6 +298,10 @@ pub enum MagicError {
     LibmagicFlagUnsupported(CookieFlags),
     #[error("invalid database file path")]
     InvalidDatabaseFilePath,
+    #[error("failed to acquire read lock on `magic_t`")]
+    LockPoisonR,
+    #[error("failed to acquire write lock on `magic_t`")]
+    LockPoisonW,
     #[error("unknown error")]
     Unknown,
 }
@@ -306,20 +311,24 @@ pub enum MagicError {
 #[doc(alias = "magic_t")]
 #[doc(alias = "magic_set")]
 pub struct Cookie {
-    cookie: self::ffi::magic_t,
+    cookie: Arc<RwLock<self::ffi::magic_t>>,
 }
 
 impl Drop for Cookie {
     /// Closes the magic database and deallocates any resources used
     #[doc(alias = "magic_close")]
     fn drop(&mut self) {
-        unsafe { self::ffi::magic_close(self.cookie) }
+        let cookie = self.cookie.read().unwrap();
+        unsafe { self::ffi::magic_close(*cookie) }
     }
 }
 
 impl Cookie {
     fn last_error(&self) -> Option<MagicError> {
-        let cookie = self.cookie;
+        let cookie = match self.cookie.read() {
+            Ok(c) => c.clone(),
+            Err(_) => return Some(MagicError::LockPoisonR),
+        };
 
         unsafe {
             let error = self::ffi::magic_error(cookie);
@@ -352,7 +361,7 @@ impl Cookie {
     /// Returns a textual description of the contents of the `filename`
     #[doc(alias = "magic_file")]
     pub fn file<P: AsRef<Path>>(&self, filename: P) -> Result<String, MagicError> {
-        let cookie = self.cookie;
+        let cookie = self.cookie.read().map_err(|_| MagicError::LockPoisonR)?.clone();
         let f = CString::new(filename.as_ref().to_string_lossy().into_owned())
             .unwrap()
             .into_raw();
@@ -370,10 +379,11 @@ impl Cookie {
     /// Returns a textual description of the contents of the `buffer`
     #[doc(alias = "magic_buffer")]
     pub fn buffer(&self, buffer: &[u8]) -> Result<String, MagicError> {
+        let cookie = self.cookie.read().map_err(|_| MagicError::LockPoisonR)?.clone();
         let buffer_len = buffer.len() as size_t;
         let pbuffer = buffer.as_ptr();
         unsafe {
-            let str = self::ffi::magic_buffer(self.cookie, pbuffer, buffer_len);
+            let str = self::ffi::magic_buffer(cookie, pbuffer, buffer_len);
             if str.is_null() {
                 Err(self.magic_failure())
             } else {
@@ -388,7 +398,8 @@ impl Cookie {
     /// Overwrites any previously set flags, e.g. those from `load()`.
     #[doc(alias = "magic_setflags")]
     pub fn set_flags(&self, flags: self::CookieFlags) -> Result<(), MagicError> {
-        let ret = unsafe { self::ffi::magic_setflags(self.cookie, flags.bits()) };
+        let cookie = self.cookie.write().map_err(|_| MagicError::LockPoisonW)?.clone();
+        let ret = unsafe { self::ffi::magic_setflags(cookie, flags.bits()) };
         match ret {
             -1 => Err(MagicError::LibmagicFlagUnsupported(
                 CookieFlags::PRESERVE_ATIME,
@@ -404,10 +415,9 @@ impl Cookie {
     /// Check the validity of entries in the database `filenames`
     #[doc(alias = "magic_check")]
     pub fn check<P: AsRef<Path>>(&self, filenames: &[P]) -> Result<(), MagicError> {
-        let cookie = self.cookie;
+        let cookie = self.cookie.write().map_err(|_| MagicError::LockPoisonW)?.clone();
         let db_filenames = db_filenames(filenames)?;
         let ret;
-
         unsafe {
             ret = self::ffi::magic_check(
                 cookie,
@@ -427,7 +437,7 @@ impl Cookie {
     /// argument with '.mgc' appended to it.
     #[doc(alias = "magic_compile")]
     pub fn compile<P: AsRef<Path>>(&self, filenames: &[P]) -> Result<(), MagicError> {
-        let cookie = self.cookie;
+        let cookie = self.cookie.write().map_err(|_| MagicError::LockPoisonW)?.clone();
         let db_filenames = db_filenames(filenames)?;
         let ret;
 
@@ -448,7 +458,7 @@ impl Cookie {
     /// readable format
     #[doc(alias = "magic_list")]
     pub fn list<P: AsRef<Path>>(&self, filenames: &[P]) -> Result<(), MagicError> {
-        let cookie = self.cookie;
+        let cookie = self.cookie.read().map_err(|_| MagicError::LockPoisonR)?.clone();
         let db_filenames = db_filenames(filenames)?;
         let ret;
 
@@ -486,7 +496,7 @@ impl Cookie {
     /// # }
     #[doc(alias = "magic_load")]
     pub fn load<P: AsRef<Path>>(&self, filenames: &[P]) -> Result<(), MagicError> {
-        let cookie = self.cookie;
+        let cookie = self.cookie.write().map_err(|_| MagicError::LockPoisonW)?.clone();
         let db_filenames = db_filenames(filenames)?;
         let ret;
 
@@ -515,7 +525,7 @@ impl Cookie {
     /// previously loaded database/s.
     #[doc(alias = "magic_load_buffers")]
     pub fn load_buffers(&self, buffers: &[&[u8]]) -> Result<(), MagicError> {
-        let cookie = self.cookie;
+        let cookie = self.cookie.write().map_err(|_| MagicError::LockPoisonW)?.clone();
         let mut ffi_buffers: Vec<*const u8> = Vec::with_capacity(buffers.len());
         let mut ffi_sizes: Vec<libc::size_t> = Vec::with_capacity(buffers.len());
         let ffi_nbuffers = buffers.len() as libc::size_t;
@@ -558,7 +568,7 @@ impl Cookie {
             }
             .into())
         } else {
-            Ok(Cookie { cookie })
+            Ok(Cookie { cookie: Arc::new(RwLock::new(cookie)) })
         }
     }
 }
