@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["MagicError","The error type used in this crate"]],"fn":[["libmagic_version","Returns the version of the `libmagic` C library as reported by itself."]],"struct":[["Cookie","Configuration of which `CookieFlags` and magic databases to use"],["CookieFlags","Bitmask flags that specify how `Cookie` functions should behave"],["FfiError","FFI error while calling `libmagic`"]]};
+window.SIDEBAR_ITEMS = {"enum":["MagicError"],"fn":["libmagic_version"],"struct":["Cookie","CookieFlags","FfiError"]};
