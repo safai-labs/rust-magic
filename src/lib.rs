@@ -314,6 +314,9 @@ pub struct Cookie {
     cookie: Arc<RwLock<self::ffi::magic_t>>,
 }
 
+unsafe impl Send for Cookie {}
+unsafe impl Sync for Cookie {}
+
 impl Drop for Cookie {
     /// Closes the magic database and deallocates any resources used
     #[doc(alias = "magic_close")]
