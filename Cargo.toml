@@ -35,7 +35,7 @@ exclude = [
 rust-version = "1.48"
 
 [package.metadata]
-msrv = "1.48.0"
+msrv = "1.70.0"
 
 [package.metadata.docs.rs]
 all-features = true
@@ -57,3 +57,16 @@ default-features = false
 [dev-dependencies]
 regex = "1.5.4"
 static_assertions = "1.1.0"
+
+
+
+[package.metadata.deb]
+name = "resiliate-magic"
+license-file = [ "LICENSE", "1" ]
+copyright = "Copyright (C) 2017 – 2023 saf.ai, Inc."
+revision = "20230701"
+extended-description-file="README.md"
+priority = "required"
+section = "filesystems"
+depends = "$auto"
+
